@@ -1,0 +1,31 @@
+:root {
+  font-family: 'Baloo 2', 'Comic Sans MS', 'Nunito', system-ui, sans-serif;
+  color: #1f1133;
+  background-color: #f6f2ff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, #d2f1ff 0%, rgba(210, 241, 255, 0) 55%),
+    radial-gradient(circle at top left, #ffe3f5 0%, rgba(255, 227, 245, 0) 50%),
+    #f6f2ff;
+}
+
+#root {
+  min-height: 100vh;
+  padding: 10px 10px 20px;
+}
+
+button,
+input {
+  font: inherit;
+}
