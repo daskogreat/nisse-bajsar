@@ -54,27 +54,6 @@ const getStreak = (entries) => {
   return streak
 }
 
-const normalizeEntries = (raw) => {
-  if (!raw || typeof raw !== 'object') return {}
-
-  return Object.fromEntries(
-    Object.entries(raw).map(([key, value]) => {
-      if (Array.isArray(value?.entries)) {
-        return [key, { entries: value.entries }]
-      }
-      if (value?.consistency) {
-        return [
-          key,
-          {
-            entries: [{ type: 'poop', consistency: value.consistency }],
-          },
-        ]
-      }
-      return [key, { entries: [] }]
-    }),
-  )
-}
-
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState('')
@@ -92,21 +71,26 @@ function App() {
   const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    try {
-      const parsed = JSON.parse(raw)
-      if (parsed && typeof parsed === 'object') {
-        setEntries(normalizeEntries(parsed))
-      }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY)
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries))
-  }, [entries])
+    if (!isLoggedIn) return
+    
+    fetch('/api/entries')
+      .then((res) => res.json())
+      .then((data) => {
+        const formatted = {}
+        for (const row of data) {
+          if (!formatted[row.date]) {
+            formatted[row.date] = { entries: [] }
+          }
+          if (row.type === 'poop') {
+            formatted[row.date].entries.push({ type: 'poop', consistency: row.consistency, id: row.id, savedAt: row.created_at })
+          } else if (row.type === 'medicine') {
+            formatted[row.date].entries.push({ type: 'medicine', taken: true, kind: row.medicine_type, id: row.id, savedAt: row.created_at })
+          }
+        }
+        setEntries(formatted)
+      })
+      .catch((err) => console.error('Failed to load entries:', err))
+  }, [isLoggedIn])
 
   const selectedDayData = entries[dayKey(selectedDay)] ?? { entries: [] }
   const selectedDayEntries = selectedDayData.entries
@@ -123,6 +107,8 @@ function App() {
 
   const savePoop = (consistencyId) => {
     const key = dayKey(selectedDay)
+    
+    // Optimistic update
     setEntries((current) => ({
       ...current,
       [key]: {
@@ -132,6 +118,16 @@ function App() {
         ],
       },
     }))
+
+    fetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: key,
+        type: 'poop',
+        consistency: consistencyId,
+      }),
+    }).catch((err) => console.error('Failed to save poop:', err))
 
     const hasMedicine = Boolean(medicineEntry)
     showFeedback(hasMedicine ? 'Toppen! Allt loggat 👍' : 'Snyggt jobbat Nisse! 🚀')
@@ -144,6 +140,8 @@ function App() {
 
   const saveMedicine = (kind) => {
     const key = dayKey(selectedDay)
+    
+    // Optimistic update
     setEntries((current) => ({
       ...current,
       [key]: {
@@ -153,6 +151,16 @@ function App() {
         ],
       },
     }))
+
+    fetch('/api/entries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: key,
+        type: 'medicine',
+        medicine_type: kind,
+      }),
+    }).catch((err) => console.error('Failed to save medicine:', err))
 
     const hasPoop = Boolean(poopEntry)
     showFeedback(hasPoop ? 'Toppen! Allt loggat 👍' : 'Bra jobbat! 💪')
